@@ -47,6 +47,9 @@ class ThumbnailReconRenderer extends ReconCellRenderer {
     }
 
     var service = ReconciliationManager.getServiceFromUrl(r.service);
+    if (!service) {
+      return undefined;
+    }
     var mediaWikiRootUrl = self.siteIriToMediaWikiRootUrl.get(service.identifierSpace);
     // if the reconciliation service is not associated with a Wikibase, defer to recon renderer
     if (!mediaWikiRootUrl) {

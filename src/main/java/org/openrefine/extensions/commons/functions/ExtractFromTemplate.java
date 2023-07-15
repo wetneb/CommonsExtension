@@ -3,9 +3,12 @@ package org.openrefine.extensions.commons.functions;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
+import org.openrefine.expr.EvalError;
+import org.openrefine.expr.functions.Type;
 import org.openrefine.extensions.commons.utils.WikitextParsingUtilities;
+import org.openrefine.grel.ControlFunctionRegistry;
+import org.openrefine.grel.PureFunction;
 import org.sweble.wikitext.parser.ParserConfig;
 import org.sweble.wikitext.parser.nodes.WtNode;
 import org.sweble.wikitext.parser.nodes.WtParsedWikitextPage;
@@ -15,14 +18,11 @@ import org.sweble.wikitext.parser.nodes.WtTemplateArguments;
 import org.sweble.wikitext.parser.utils.SimpleParserConfig;
 import org.sweble.wikitext.parser.utils.WtPrettyPrinter;
 
-import com.google.refine.expr.EvalError;
-import com.google.refine.expr.functions.Type;
-import com.google.refine.grel.ControlFunctionRegistry;
-import com.google.refine.grel.Function;
-
 import de.fau.cs.osr.ptk.common.AstVisitor;
 
-public class ExtractFromTemplate implements Function {
+public class ExtractFromTemplate extends PureFunction {
+
+    private static final long serialVersionUID = 6466726945401794218L;
 
     public class FindTemplateValues extends AstVisitor<WtNode> {
 
@@ -58,9 +58,9 @@ public class ExtractFromTemplate implements Function {
     ParserConfig parserConfig = new SimpleParserConfig();
 
     @Override
-    public Object call(Properties bindings, Object[] args) {
+    public Object call(Object[] args) {
         if (args.length != 3 || !(args[0] instanceof String)) {
-            return new EvalError("Unexpected arguments for "+ControlFunctionRegistry.getFunctionName(this) + "(): got '" + new Type().call(bindings, args) + "' but expected a single String as an argument");
+            return new EvalError("Unexpected arguments for "+ControlFunctionRegistry.getFunctionName(this) + "(): got '" + new Type().call(args) + "' but expected a single String as an argument");
         }
 
         try {

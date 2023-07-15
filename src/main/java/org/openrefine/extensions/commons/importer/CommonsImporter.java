@@ -9,15 +9,20 @@ import java.util.List;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.Iterators;
-import com.google.refine.ProjectMetadata;
-import com.google.refine.importers.TabularImportingParserBase;
-import com.google.refine.importing.ImportingJob;
-import com.google.refine.model.Column;
-import com.google.refine.model.Project;
-import com.google.refine.model.ReconStats;
-import com.google.refine.model.recon.StandardReconConfig;
-import com.google.refine.model.recon.StandardReconConfig.ColumnDetail;
-import com.google.refine.util.JSONUtilities;
+import org.openrefine.ProjectMetadata;
+import org.openrefine.importers.TabularParserHelper;
+import org.openrefine.importers.TabularParserHelper.TableDataReader;
+import org.openrefine.importing.ImportingJob;
+import org.openrefine.model.ColumnMetadata;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.Grid;
+import org.openrefine.model.Project;
+import org.openrefine.model.Row;
+import org.openrefine.model.Runner;
+import org.openrefine.model.recon.StandardReconConfig;
+import org.openrefine.model.recon.StandardReconConfig.ColumnDetail;
+import org.openrefine.util.CloseableIterable;
+import org.openrefine.util.JSONUtilities;
 
 public class CommonsImporter {
 
@@ -33,16 +38,16 @@ public class CommonsImporter {
         apiUrl = apiUrlTest;
     }
 
-    static public void parsePreview(
-            Project project,
+    static public Grid parsePreview(
+            Runner runner,
             ProjectMetadata metadata,
             final ImportingJob job,
             int limit,
             ObjectNode options,
-            List<Exception> exceptions) throws IOException {
+            List<Exception> exceptions) throws Exception {
 
-        parse(
-                project,
+        return parse(
+                runner,
                 metadata,
                 job,
                 limit,
@@ -52,13 +57,13 @@ public class CommonsImporter {
 
     }
 
-    static public void parse(
-            Project project,
+    static public Grid parse(
+            Runner runner,
             ProjectMetadata metadata,
             final ImportingJob job,
             int limit,
             ObjectNode options,
-            List<Exception> exceptions) throws IOException {
+            List<Exception> exceptions) throws Exception {
 
         List<CategoryWithDepth> categoriesWithDepth = new ArrayList<>();
         Iterator<FileRecord> rcf;
@@ -87,16 +92,9 @@ public class CommonsImporter {
             rcf = fetchedFiles;
         }
 
-        TabularImportingParserBase.readTable(
-                project,
-                job,
-                new FileRecordToRows(rcf, categoriesColumn, mIdsColumn),
-                limit,
-                options,
-                exceptions
-        );
-
-        Column col = project.columnModel.columns.get(0);
+        TableDataReader dataReader = new FileRecordToRows(rcf, categoriesColumn, mIdsColumn);
+        
+        List<ColumnMetadata> columns = new ArrayList<>();
         StandardReconConfig cfg = new StandardReconConfig(
                 service,
                 "https://commons.wikimedia.org/entity/",
@@ -106,19 +104,25 @@ public class CommonsImporter {
                 true,
                 new ArrayList<ColumnDetail>(),
                 1);
-        col.setReconStats(ReconStats.create(project, 0));
-        col.setReconConfig(cfg);
-        col.setName("File");
+        ColumnMetadata fileColumn = new ColumnMetadata("File")
+                .withReconConfig(cfg);
+        columns.add(fileColumn);
         if (mIdsColumn) {
-            project.columnModel.columns.get(1).setName("M-ids");
-            if (categoriesColumn) {
-                project.columnModel.columns.get(2).setName("Categories");
-            }
-        } else if (categoriesColumn) {
-            project.columnModel.columns.get(1).setName("Categories");
+            columns.add(new ColumnMetadata("M-ids"));
         }
+        if (categoriesColumn) {
+            columns.add(new ColumnMetadata("Categories"));
+        }
+        
+        ColumnModel columnModel = new ColumnModel(columns)
+                .withHasRecords(categoriesColumn);
+        TabularParserHelper tabularParsingHelper = new TabularParserHelper();
+        Grid grid = tabularParsingHelper.parseOneFile(
+                runner, metadata, job, "", "",
+                dataReader, limit, options);
 
         setProgress(job, categoriesWithDepth.get(categoriesWithDepth.size()-1).categoryName, 100);
+        return grid.withColumnModel(columnModel);
     }
 
     static private void setProgress(ImportingJob job, String category, int percent) {

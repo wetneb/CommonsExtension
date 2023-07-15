@@ -3,23 +3,23 @@ package org.openrefine.extensions.commons.functions;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Properties;
 
+import org.openrefine.expr.EvalError;
+import org.openrefine.expr.functions.Type;
 import org.openrefine.extensions.commons.utils.WikitextParsingUtilities;
+import org.openrefine.grel.ControlFunctionRegistry;
+import org.openrefine.grel.PureFunction;
 import org.sweble.wikitext.parser.ParserConfig;
 import org.sweble.wikitext.parser.nodes.WtInternalLink;
 import org.sweble.wikitext.parser.nodes.WtNode;
 import org.sweble.wikitext.parser.nodes.WtParsedWikitextPage;
 import org.sweble.wikitext.parser.utils.SimpleParserConfig;
 
-import com.google.refine.expr.EvalError;
-import com.google.refine.expr.functions.Type;
-import com.google.refine.grel.ControlFunctionRegistry;
-import com.google.refine.grel.Function;
-
 import de.fau.cs.osr.ptk.common.AstVisitor;
 
-public class ExtractCategories implements Function {
+public class ExtractCategories extends PureFunction {
+
+    private static final long serialVersionUID = 2946414542313290087L;
 
     public static class CategoriesExtractor extends AstVisitor<WtNode>{
 
@@ -41,9 +41,9 @@ public class ExtractCategories implements Function {
     ParserConfig parserConfig = new SimpleParserConfig();
 
     @Override
-    public Object call(Properties bindings, Object[] args) {
+    public Object call(Object[] args) {
         if (args.length != 1 || !(args[0] instanceof String)) {
-            return new EvalError("Unexpected arguments for "+ControlFunctionRegistry.getFunctionName(this) + "(): got '" + new Type().call(bindings, args) + "' but expected a single String as an argument");
+            return new EvalError("Unexpected arguments for "+ControlFunctionRegistry.getFunctionName(this) + "(): got '" + new Type().call(args) + "' but expected a single String as an argument");
         }
 
         try {

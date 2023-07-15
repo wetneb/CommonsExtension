@@ -9,8 +9,8 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.google.refine.RefineServlet;
-import com.google.refine.commands.Command;
+import org.openrefine.RefineServlet;
+import org.openrefine.commands.Command;
 
 public class RefineServletStub extends RefineServlet {
 

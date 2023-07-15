@@ -7,19 +7,19 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
-import org.openrefine.extensions.commons.utils.ProjectManagerStub;
-import org.openrefine.extensions.commons.utils.RefineServletStub;
+import org.openrefine.RefineServlet;
+import org.openrefine.importing.ImportingManager;
+import org.openrefine.io.FileProjectManager;
+import org.openrefine.model.ModelException;
+import org.openrefine.operations.OperationRegistry;
+import org.openrefine.operations.column.ColumnAdditionByFetchingURLsOperation;
+import org.openrefine.util.ParsingUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testng.Assert;
@@ -29,24 +29,8 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.refine.ProjectManager;
-import com.google.refine.ProjectMetadata;
-import com.google.refine.RefineServlet;
-import com.google.refine.importing.ImportingJob;
-import com.google.refine.importing.ImportingManager;
-import com.google.refine.io.FileProjectManager;
-import com.google.refine.model.Column;
-import com.google.refine.model.ModelException;
-import com.google.refine.model.Project;
-import com.google.refine.operations.OperationRegistry;
-import com.google.refine.operations.column.ColumnAdditionByFetchingURLsOperation;
-import com.google.refine.util.ParsingUtilities;
 
 import edu.mit.simile.butterfly.ButterflyModule;
-import okhttp3.HttpUrl;
-import okhttp3.mockwebserver.MockResponse;
-import okhttp3.mockwebserver.MockWebServer;
-import okhttp3.mockwebserver.RecordedRequest;
 
 public class CommonsImportingControllerTest {
 
@@ -61,11 +45,6 @@ public class CommonsImportingControllerTest {
     protected Logger logger;
 
     protected RefineServlet servlet;
-
-    // dependencies
-    private Project project;
-    private ProjectMetadata metadata;
-    private ImportingJob job;
 
     // System under test
     private CommonsImportingController SUT = null;
@@ -87,27 +66,8 @@ public class CommonsImportingControllerTest {
     @BeforeTest
     public void init() {
         logger = LoggerFactory.getLogger(this.getClass());
-        OperationRegistry.registerOperation(getCoreModule(), "column-addition-by-fetching-urls",
+        OperationRegistry.registerOperation("core", "column-addition-by-fetching-urls",
                 ColumnAdditionByFetchingURLsOperation.class);
-    }
-
-    protected Project createProjectWithColumns(String projectName, String... columnNames) throws IOException, ModelException {
-        servlet = new RefineServletStub();
-        ProjectManager.singleton = new ProjectManagerStub();
-        ImportingManager.initialize(servlet);
-        Project project = new Project();
-        ProjectMetadata pm = new ProjectMetadata();
-        pm.setName(projectName);
-        ProjectManager.singleton.registerProject(project, pm);
-
-        if (columnNames != null) {
-            for (String columnName : columnNames) {
-                int index = project.columnModel.allocateNewCellIndex();
-                Column column = new Column(index, columnName);
-                project.columnModel.addColumn(index, column, true);
-            }
-        }
-        return project;
     }
 
     @BeforeMethod
@@ -120,12 +80,6 @@ public class CommonsImportingControllerTest {
 
         servlet = new RefineServlet();
         ImportingManager.initialize(servlet);
-        project = new Project();
-        metadata = new ProjectMetadata();
-
-        metadata.setName("Commons Import Test Project");
-        ProjectManager.singleton.registerProject(project, metadata);
-        SUT = new CommonsImportingController();
 
     }
 
@@ -134,9 +88,6 @@ public class CommonsImportingControllerTest {
         SUT = null;
         request = null;
         response = null;
-        project = null;
-        metadata = null;
-        job = null;
     }
 
     @Test
@@ -148,11 +99,8 @@ public class CommonsImportingControllerTest {
             when(response.getWriter()).thenReturn(pw);
 
             SUT.doGet(request, response);
-            System.out.print(sw +"1\n");
 
             String result = sw.getBuffer().toString().trim();
-            System.out.print(result +"2\n");
-            System.out.print(pw +"3\n");
             ObjectNode json = ParsingUtilities.mapper.readValue(result, ObjectNode.class);
             String code = json.get("status").asText();
             String message = json.get("message").asText();

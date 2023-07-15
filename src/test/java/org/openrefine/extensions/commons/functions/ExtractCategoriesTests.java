@@ -2,18 +2,16 @@ package org.openrefine.extensions.commons.functions;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Properties;
 
+import org.openrefine.grel.ControlFunctionRegistry;
+import org.openrefine.grel.PureFunction;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import com.google.refine.grel.ControlFunctionRegistry;
-import com.google.refine.grel.Function;
-
 public class ExtractCategoriesTests {
 
-    Function function = new ExtractCategories();
+    PureFunction function = new ExtractCategories();
     
     @BeforeClass
     public void registerFunction() {
@@ -31,7 +29,7 @@ public class ExtractCategoriesTests {
                 + "[[Category:Sculptures by John Doe]]\n"
                 + "[[Category:Uploads by StoneWizard]]";
         
-        Object result = function.call(new Properties(), new Object[] {wikitext});
+        Object result = function.call(new Object[] {wikitext});
 
         Assert.assertEquals(result, Arrays.asList("Category:Sculptures by John Doe", "Category:Uploads by StoneWizard"));
     }
@@ -43,7 +41,7 @@ public class ExtractCategoriesTests {
                 + "|date=1984-03-09"
                 + "[[Category:Sculptures by John Doe";
         
-        Object result = function.call(new Properties(), new Object[] {wikitext});
+        Object result = function.call(new Object[] {wikitext});
               
         Assert.assertEquals(result, Collections.<String>emptyList());
     }
@@ -59,7 +57,7 @@ public class ExtractCategoriesTests {
                 + "[[Category:ISS Expedition 30 Crew Earth Observations (dump)|226922]]\n"
                 + "[[Category:Taken with Nikon D3s]]\n";
 
-        Object result = function.call(new Properties(), new Object[] {wikitext});
+        Object result = function.call(new Object[] {wikitext});
 
         Assert.assertEquals(result, Arrays.asList("Category:ISS Expedition 30 Crew Earth Observations (dump)", "Category:Taken with Nikon D3s"));
     }

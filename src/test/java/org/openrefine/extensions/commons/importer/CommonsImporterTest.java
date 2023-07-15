@@ -4,28 +4,28 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.mockito.Mockito;
+import org.openrefine.ProjectMetadata;
+import org.openrefine.RefineServlet;
+import org.openrefine.RefineTest;
+import org.openrefine.importing.ImportingJob;
+import org.openrefine.model.Cell;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.Grid;
+import org.openrefine.util.ParsingUtilities;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.refine.ProjectMetadata;
-import com.google.refine.RefineServlet;
-import com.google.refine.importing.ImportingJob;
-import com.google.refine.importing.ImportingManager;
-import com.google.refine.model.Cell;
-import com.google.refine.model.Project;
-import com.google.refine.util.ParsingUtilities;
 
 import okhttp3.HttpUrl;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 
-public class CommonsImporterTest {
+public class CommonsImporterTest extends RefineTest {
 
     protected RefineServlet servlet;
 
     // dependencies
-    private Project project;
     private ProjectMetadata metadata;
     private ImportingJob job;
 
@@ -41,11 +41,10 @@ public class CommonsImporterTest {
             String jsonResponse = "{\"batchcomplete\":\"\",\"query\":{\"categorymembers\":"
                     + "[{\"pageid\":127722,\"ns\":6,\"title\":\"File:3 Puppies.jpg\",\"type\":\"file\"}]}}";
             server.enqueue(new MockResponse().setBody(jsonResponse));
-            servlet = new RefineServlet();
-            ImportingManager.initialize(servlet);
-            project = new Project();
+
             metadata = new ProjectMetadata();
             metadata.setName("Commons Import Test Project");
+            
             job = Mockito.mock(ImportingJob.class);
             ObjectNode options = ParsingUtilities.evaluateJsonStringToObjectNode(
                     "{\"categoryJsonValue\":[{\"category\":\"Category:Costa Rica\",\"depth\":\"0\"}],\"skipDataLines\":0,"
@@ -54,13 +53,15 @@ public class CommonsImporterTest {
             CommonsImporter importer = new CommonsImporter();
 
             importer.setApiUrl(url.toString());
-            CommonsImporter.parse(project, metadata, job, 0, options, exceptions);
-            project.update();
-            Cell cell = project.rows.get(0).cells.get(0);
+            
+            Grid grid = CommonsImporter.parse(runner(), metadata, job, 0, options, exceptions);
 
-            Assert.assertEquals(project.columnModel.columns.get(0).getName(), "File");
-            Assert.assertEquals(project.columnModel.columns.get(1).getName(), "M-ids");
-            Assert.assertEquals(project.columnModel.columns.get(2).getName(), "Categories");
+
+            Cell cell = grid.getRow(0).cells.get(0);
+            ColumnModel columnModel = grid.getColumnModel();
+            Assert.assertEquals(columnModel.getColumnByIndex(0).getName(), "File");
+            Assert.assertEquals(columnModel.getColumnByIndex(1).getName(), "M-ids");
+            Assert.assertEquals(columnModel.getColumnByIndex(2).getName(), "Categories");
             Assert.assertEquals(cell.recon.match.id, "M127722");
             Assert.assertEquals(cell.recon.match.name, "File:3 Puppies.jpg");
 

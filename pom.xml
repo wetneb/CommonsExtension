@@ -20,9 +20,9 @@
   </licenses>
 
   <properties>
-    <openrefine.version>3.6-SNAPSHOT</openrefine.version>
+    <openrefine.version>4.0-SNAPSHOT</openrefine.version>
     <jackson.version>2.12.3</jackson.version>
-    <wdtk.version>0.12.1-SNAPSHOT</wdtk.version>
+    <wdtk.version>0.14.6</wdtk.version>
     <swc-parser-lazy.version>3.1.9</swc-parser-lazy.version>
     <surefire.version>2.22.2</surefire.version>
   </properties>
@@ -131,13 +131,13 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.openrefine.dependencies.wdtk</groupId>
+      <groupId>org.wikidata.wdtk</groupId>
       <artifactId>wdtk-datamodel</artifactId>
       <version>${wdtk.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.openrefine.dependencies.wdtk</groupId>
+      <groupId>org.wikidata.wdtk</groupId>
       <artifactId>wdtk-util</artifactId>
       <version>${wdtk.version}</version>
       <scope>provided</scope>
@@ -178,6 +178,12 @@
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
       <version>3.6.28</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.openrefine</groupId>
+      <artifactId>refine-testing</artifactId>
+      <version>${openrefine.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

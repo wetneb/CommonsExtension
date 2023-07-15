@@ -2,7 +2,6 @@ package org.openrefine.extensions.commons.importer;
 
 import java.io.IOException;
 import java.io.Writer;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -12,31 +11,27 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.openrefine.ProjectManager;
+import org.openrefine.ProjectMetadata;
+import org.openrefine.RefineModel;
+import org.openrefine.RefineServlet;
+import org.openrefine.commands.HttpUtilities;
+import org.openrefine.importing.ImportingController;
+import org.openrefine.importing.ImportingJob;
+import org.openrefine.importing.ImportingManager;
+import org.openrefine.model.Grid;
+import org.openrefine.model.Project;
+import org.openrefine.model.changes.ChangeDataStore;
+import org.openrefine.model.changes.GridCache;
+import org.openrefine.model.changes.LazyChangeDataStore;
+import org.openrefine.model.changes.LazyGridCache;
+import org.openrefine.util.JSONUtilities;
+import org.openrefine.util.ParsingUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.refine.ProjectManager;
-import com.google.refine.ProjectMetadata;
-import com.google.refine.RefineServlet;
-import com.google.refine.commands.HttpUtilities;
-import com.google.refine.importers.TabularImportingParserBase;
-import com.google.refine.importers.TabularImportingParserBase.TableDataReader;
-import com.google.refine.importing.ImportingController;
-import com.google.refine.importing.ImportingJob;
-import com.google.refine.importing.ImportingManager;
-import com.google.refine.model.Project;
-import com.google.refine.util.JSONUtilities;
-import com.google.refine.util.ParsingUtilities;
-
-import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
 
 public class CommonsImportingController implements ImportingController {
     private static final Logger logger = LoggerFactory.getLogger("CommonsImportingController");
@@ -138,48 +133,47 @@ public class CommonsImportingController implements ImportingController {
         }
 
         job.updating = true;
-        ObjectNode optionObj = ParsingUtilities.evaluateJsonStringToObjectNode(
-            request.getParameter("options"));
-
-        List<Exception> exceptions = new LinkedList<Exception>();
-
-        job.prepareNewProject();
-
-        CommonsImporter.parsePreview(
-                job.project,
-                job.metadata,
-                job,
-                DEFAULT_PREVIEW_LIMIT,
-                optionObj,
-                exceptions
-        );
-
-        Writer w = response.getWriter();
-        JsonGenerator writer = ParsingUtilities.mapper.getFactory().createGenerator(w);
         try {
-            writer.writeStartObject();
-            if (exceptions.size() == 0) {
-                job.project.update(); // update all internal models, indexes, caches, etc.
+            ObjectNode optionObj = ParsingUtilities.evaluateJsonStringToObjectNode(
+                    request.getParameter("options"));
 
+            List<Exception> exceptions = new LinkedList<Exception>();
+
+            Writer w = response.getWriter();
+            JsonGenerator writer = ParsingUtilities.mapper.getFactory().createGenerator(w);
+            
+            try {
+                Grid grid = CommonsImporter.parsePreview(
+                        RefineModel.getRunner(),
+                        job.metadata,
+                        job,
+                        DEFAULT_PREVIEW_LIMIT,
+                        optionObj,
+                        exceptions
+                );
+                job.setProject(new Project(grid, new LazyChangeDataStore(RefineModel.getRunner()), new LazyGridCache()));
+                
+                writer.writeStartObject();
                 writer.writeStringField("status", "ok");
-            } else {
+                writer.writeEndObject();
+            } catch(Exception e) {
+                writer.writeStartObject();
                 writer.writeStringField("status", "error");
-
-                writer.writeArrayFieldStart("errors");
-                writer.writeEndArray();
+                writer.writeStringField("message", e.toString());
+                writer.writeEndObject();
+            } finally {
+                writer.flush();
+                writer.close();
+                w.flush();
+                w.close();
             }
-            writer.writeEndObject();
+
         } catch (IOException e) {
             throw new ServletException(e);
         } finally {
-            writer.flush();
-            writer.close();
-            w.flush();
-            w.close();
+            job.touch();
+            job.updating = false;
         }
-
-        job.touch();
-        job.updating = false;
     }
 
     private void doCreateProject(HttpServletRequest request, HttpServletResponse response, Properties parameters)
@@ -191,54 +185,55 @@ public class CommonsImportingController implements ImportingController {
             HttpUtilities.respond(response, "error", "No such import job");
             return;
         }
-
+        
         job.updating = true;
-        final ObjectNode optionObj = ParsingUtilities.evaluateJsonStringToObjectNode(
-            request.getParameter("options"));
+        try {
+            final ObjectNode optionObj = ParsingUtilities.evaluateJsonStringToObjectNode(
+                    request.getParameter("options"));
 
-        final List<Exception> exceptions = new LinkedList<Exception>();
+            final List<Exception> exceptions = new LinkedList<Exception>();
 
-        job.setState("creating-project");
+            job.setState("creating-project");
 
-        final Project project = new Project();
-        new Thread() {
-            @Override
-            public void run() {
-                ProjectMetadata pm = new ProjectMetadata();
-                pm.setName(JSONUtilities.getString(optionObj, "projectName", "Untitled"));
-                pm.setEncoding(JSONUtilities.getString(optionObj, "encoding", "UTF-8"));
+            new Thread() {
 
-                try {
-                    CommonsImporter.parse(
-                            project,
-                            pm,
-                            job,
-                            DEFAULT_PROJECT_LIMIT ,
-                            optionObj,
-                            exceptions
-                    );
-                } catch (IOException e) {
-                    logger.error(ExceptionUtils.getStackTrace(e));
-                }
+                @Override
+                public void run() {
+                    ProjectMetadata pm = new ProjectMetadata();
+                    pm.setName(JSONUtilities.getString(optionObj, "projectName", "Untitled"));
+                    pm.setEncoding(JSONUtilities.getString(optionObj, "encoding", "UTF-8"));
 
-                if (!job.canceled) {
-                    if (exceptions.size() > 0) {
-                        job.setError(exceptions);
-                    } else {
-                        project.update(); // update all internal models, indexes, caches, etc.
-
-                        ProjectManager.singleton.registerProject(project, pm);
-
+                    try {
+                        Grid grid = CommonsImporter.parse(
+                                RefineModel.getRunner(),
+                                pm,
+                                job,
+                                DEFAULT_PROJECT_LIMIT ,
+                                optionObj,
+                                exceptions
+                        );
+                        long projectId = Project.generateID();
+                        ChangeDataStore dataStore = ProjectManager.singleton.getChangeDataStore(projectId);
+                        GridCache gridStore = ProjectManager.singleton.getGridCache(projectId);
+                        job.setProject(new Project(projectId, grid, dataStore, gridStore));
+                        
+                        ProjectManager.singleton.registerProject(job.getProject(), pm);
                         job.setState("created-project");
-                        job.setProjectID(project.id);
+                        job.setProjectID(job.getProject().getId());
+                    } catch(Exception e) {
+                        job.setError(Collections.singletonList(e));
                     }
 
-                    job.touch();
-                    job.updating = false;
+                    if (!job.canceled) {
+                        job.touch();
+                        job.updating = false;
+                    }
                 }
-            }
-        }.start();
+            }.start();
 
-        HttpUtilities.respond(response, "ok", "done");
+            HttpUtilities.respond(response, "ok", "done");
+        } catch (Exception e) {
+            throw new ServletException(e);
+        }
     }
 }

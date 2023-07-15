@@ -10,7 +10,7 @@ var encoding = "UTF-8";
 var version = "0.3";
 
 // Register our Javascript (and CSS) files to get loaded
-var ClientSideResourceManager = Packages.com.google.refine.ClientSideResourceManager;
+var ClientSideResourceManager = Packages.org.openrefine.ClientSideResourceManager;
 
 /*
  * Function invoked to initialize the extension.
@@ -18,13 +18,13 @@ var ClientSideResourceManager = Packages.com.google.refine.ClientSideResourceMan
 function init() {
    
   // Register our GREL functions so that they are visible in OpenRefine
-  var CFR = Packages.com.google.refine.grel.ControlFunctionRegistry;
+  var CFR = Packages.org.openrefine.grel.ControlFunctionRegistry;
 
   CFR.registerFunction("extractCategories", new Packages.org.openrefine.extensions.commons.functions.ExtractCategories());
   CFR.registerFunction("extractFromTemplate", new Packages.org.openrefine.extensions.commons.functions.ExtractFromTemplate());
 
   // Register importer and exporter
-  var IM = Packages.com.google.refine.importing.ImportingManager;
+  var IM = Packages.org.openrefine.importing.ImportingManager;
 
   IM.registerController(
     module,

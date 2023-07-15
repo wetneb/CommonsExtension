@@ -6,14 +6,13 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.google.refine.expr.ExpressionUtils;
-import com.google.refine.importers.TabularImportingParserBase.TableDataReader;
-import com.google.refine.model.Cell;
-import com.google.refine.model.Recon;
-import com.google.refine.model.ReconCandidate;
-import com.google.refine.model.Recon.Judgment;
-import com.google.refine.model.recon.StandardReconConfig;
+import org.openrefine.expr.ExpressionUtils;
+import org.openrefine.importers.TabularParserHelper.TableDataReader;
+import org.openrefine.model.Cell;
+import org.openrefine.model.recon.Recon;
+import org.openrefine.model.recon.Recon.Judgment;
+import org.openrefine.model.recon.ReconCandidate;
+import org.openrefine.model.recon.StandardReconConfig;
 
 /**
  * This class takes an Iterator<FileRecord> and converts each FileRecord to one or more rows
@@ -53,6 +52,7 @@ public class FileRecordToRows implements TableDataReader {
     @Override
     public List<Object> getNextRowOfCells() throws IOException {
 
+         
         List<Object> rowsOfCells;
         rowsOfCells = new ArrayList<>();
         // check if there's rows remaining from a previous call
@@ -74,13 +74,12 @@ public class FileRecordToRows implements TableDataReader {
                 }
 
                 ReconCandidate match = new ReconCandidate(id, fileRecord.fileName, new String[0], 100);
-                Recon newRecon = reconConfig.createNewRecon(0);
-                newRecon.match = match;
-                newRecon.candidates = Collections.singletonList(match);
-                newRecon.matchRank = -1;
-                newRecon.judgment = Judgment.Matched;
-                newRecon.judgmentAction = "mass";
-                newRecon.judgmentBatchSize = 1;
+                Recon newRecon = reconConfig.createNewRecon(0)
+                        .withMatch(match)
+                        .withCandidates(Collections.singletonList(match))
+                        .withMatchRank(0)
+                        .withJudgment(Judgment.Matched)
+                        .withJudgmentAction("mass");
                 
                 Cell newCell = new Cell(
                         fileRecord.fileName,
@@ -109,6 +108,11 @@ public class FileRecordToRows implements TableDataReader {
             return null;
         }
 
+    }
+
+    @Override
+    public void close() throws IOException {
+        // nothing to do
     }
 
 }

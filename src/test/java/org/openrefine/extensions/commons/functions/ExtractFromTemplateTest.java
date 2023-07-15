@@ -1,18 +1,16 @@
 package org.openrefine.extensions.commons.functions;
 
 import java.util.Arrays;
-import java.util.Properties;
 
+import org.openrefine.grel.ControlFunctionRegistry;
+import org.openrefine.grel.PureFunction;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import com.google.refine.grel.ControlFunctionRegistry;
-import com.google.refine.grel.Function;
-
 public class ExtractFromTemplateTest {
 
-    Function function = new ExtractFromTemplate();
+    PureFunction function = new ExtractFromTemplate();
 
     @BeforeClass
     public void registerFunction() {
@@ -25,7 +23,7 @@ public class ExtractFromTemplateTest {
                 + "{{foo|bar={{other template}}}}\n"
                 + "{{foo| foo = not important| bar = second value }}";
 
-        Object result = function.call(new Properties(), new Object[] {wikitext, "foo", "bar"});
+        Object result = function.call(new Object[] {wikitext, "foo", "bar"});
 
         Assert.assertEquals(result, Arrays.asList("{{other template}}", "second value"));
     }
@@ -34,7 +32,7 @@ public class ExtractFromTemplateTest {
     public void testTemplateNameNewLine() {
         String wikitext = "{{foo\n|bar=hello}}";
 
-        Object result = function.call(new Properties(), new Object[] {wikitext, "foo\n", "bar"});
+        Object result = function.call(new Object[] {wikitext, "foo\n", "bar"});
 
         Assert.assertEquals(result, Arrays.asList("hello"));
     }
